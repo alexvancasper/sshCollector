@@ -1,0 +1,162 @@
+title = "SSH Collector"
+version = "2.3"
+
+[common]
+collect_data = true
+zipping = false
+# Remove files after zipping
+remove_zipped_files = true
+# command file
+command_file = "command.lst"
+# logs
+log_file = "/tmp/ssh_collector.log"
+
+# path where locally saved files are stored
+base_dir = "/tmp/dst"
+
+# If true, then script will not connect and disconnect every 5-10 minutes. It will stay constantly on the nodes.
+stay_on_node = false
+
+# Send  dumb_command ever keepalive
+dumb_command = "!dump command"
+
+# Seconds
+interval = 300
+keepalive = 100
+
+# In stay mode, need to save output into file?
+save_into_file = false
+
+# The debug level is numeric
+# HIGH = 1 -> low logs level
+# MEDIUM = 2 -> mediumm logs 
+# LOW = 3 -> detailed logs
+debug = 1
+
+# Timeout for SSH connection in seconds
+timeout = 5
+
+# Nanosecond
+timeout_prompt_read = 10000
+
+# Timeout between commands. seconds
+timeout_between_commands = 1
+
+[inbound_commands]
+enable = true
+socket = "amqp://guest:guest@localhost:5672/"
+exchange_name =  "inbound"
+routing_key = "commands"
+timer = 10000
+
+[parser."global"]
+enable = true
+amqp_exchange_name = "printouts"
+
+[parser."chassis"]
+enable = true
+key = "show\\schassis"
+uniq = "show_chassis"
+socket = "amqp://guest:guest@localhost:5672/"
+
+# Example for udp socket output
+#[parser."hw_thermal"]
+#enable = false
+#key = "show\\shardware\\sthermal"
+#uniq = "hwthermal"
+#socket = "udp4:127.0.0.1:11113"
+
+
+[upload]
+# If need to upload file to somewhere else, then need to change it to true
+upload_on_remote_server = false
+
+# How it will upload the file. Now supported "sftp" and "http"
+type = "http"
+
+# remove local file after upload on the remote server
+remove = true
+
+# SFTP settings
+server = "example.com"
+port = 22
+username = "sftp_user"
+
+# If pubkey is true then you have to use ssh-agent for giving the private key.
+# If pubkey is false then it will use password authentication
+pubkey = false
+# Use base64 encoding
+password = "YmFzZTY0IHBhc3N3b3Jk"
+
+# Path location where will it upload
+path = "/pub/"
+
+# HTTP settings
+http_url="https://example.com/uploader.php"
+
+# field name from HTTP form for file uploading
+Field_name="userfile"
+
+[local]
+# Need to save local copy of the collected data, if yes then change it to true
+copy_to_local_storage = false
+
+# This should be writable folder.
+storage = "/tmp"
+
+[download]
+# Need to download file from the nodes? true or false
+enable = false
+
+# From which nodes needs to download the file. Related to device profile.
+devices = "Router,Firewall"
+
+# which file needs to download from the node. Full path
+filename = "/flash/config_file.cfg"
+destination_folder = "/tmp/configs"
+
+[authentication]
+# If "true", the user and pass will be used for all Devices
+# If "false", for each device need to use separate user and password
+# If pubkey for accessing to all devices will be used the public key. in this case the username and password will be ignored
+one_for_all = false
+#username = "admin"
+#password = "amdin"
+
+#You can use private key through the ssh-agent. Need to add private key into ssh-agent first.
+pubkey = false
+pubkey_path = "/home/user/.ssh/id_rsa"
+
+
+#prompt means concatenation of hostname of node and enable_prompt symbol
+[Profiles]
+
+[Profiles."Router"]
+name = "Router"
+unenable_prompt = ">"
+enable_prompt = "#"
+
+[Profiles."Firewall"]
+name = "Firewall"
+unenable_prompt = ">"
+enable_prompt = "#"
+app_prompt = ">"
+
+
+[devices]
+[devices."10.0.2.1"]
+Hostname = "LabRouter1"
+Ip="10.0.2.1"
+User = "admin"
+Port = 22
+Password="SecretPassword1"
+Profile = "Router"
+
+[devices."10.0.2.2"]
+Hostname = "labRouter2"
+Ip="10.0.2.2"
+User = "admin"
+Port = 22
+Password="SecretPassword"
+Profile = "Router"
+
