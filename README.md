@@ -17,7 +17,7 @@ chmod +x build.sh
 Make necessary changes in the config.tml file.
 
 ```bash
-./collector_2.3 ./config.toml
+./collector_2.3 ./config.tml
 ```
 
 ## Contributing
