@@ -127,15 +127,25 @@ func ssh_collector(client Client, commands []string, wg *sync.WaitGroup, filenam
       }
       filenames.Add(filename)
 
+      waitingPrompt := client.Hostname+conf.Profiles[client.Profile].Unenable_prompt
+
       for _, cmd := range commands {
         if client.Profile == "Router" {
           if cmd[:3] == "rtr" {
             command := strings.Split(cmd, ":")
+
+	    if command[1] == conf.Profiles[client.Profile].Enable_enter_command {
+		    waitingPrompt = client.Hostname+conf.Profiles[client.Profile].Enable_prompt
+	    }
+	    if command[1] == conf.Profiles[client.Profile].Enable_exit_command {
+		    waitingPrompt = client.Hostname+conf.Profiles[client.Profile].Unenable_prompt
+	    }
+
             if conf.Common.Debug >= LOW {
-              log.Printf("%s:%s:%s",client.Hostname,command[0],command[1])
+		    log.Printf("%s:%s:%s:%s",client.Hostname,command[0],waitingPrompt,command[1])
             }
             write(command[1], sshIn)
-            response = readBuffForString(sshOut, client.Hostname+conf.Profiles[client.Profile].Enable_prompt)
+            response = readBuffForString(sshOut, waitingPrompt)
             file.WriteString(response)
           }
         }

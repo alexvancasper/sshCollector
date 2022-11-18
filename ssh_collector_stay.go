@@ -206,23 +206,11 @@ func ssh_collector_constant(client Client, commands []string, wg *sync.WaitGroup
          err = in_session.Shell()
          handleError(err)
 
-         // in case if second session asking enable password
-         // write("enable"+"\n", in_sshIn)
-         // time.Sleep(time.Duration(1 * time.Second))
-         // write("spdop"+"\n", in_sshIn)
-         // _,_ = in_sshOut.Read(buf)
-         write("show priv"+"\n", in_sshIn)
+         write(conf.Common.Dumb+"\n", in_sshIn)
          _ , _ = in_sshOut.Read(buf)
-         // log.Printf("%s",string(buf))
 
 
          log.Printf("%d:Second session was opened", id)
-
-         // for {
-         //   time.Sleep(time.Duration(1000 * time.Nanosecond))
-         //   select {
-         //     case <- inticker.C:
-         //       log.Printf("Ticker %d", id)
 
                msgs, err := inbound.amqpChannel.Consume(client.Hostname+"_in", "",false,false,false,false,nil)
                if err != nil {
@@ -243,6 +231,8 @@ func ssh_collector_constant(client Client, commands []string, wg *sync.WaitGroup
                  //                 nil,    // args
                  //         )
                  //
+
+		 waitingPrompt := client.Hostname+conf.Profiles[client.Profile].Unenable_prompt
 
                  for d := range msgs {
                          log.Printf("[NEW CMD] %s", d.Body)
@@ -269,7 +259,15 @@ func ssh_collector_constant(client Client, commands []string, wg *sync.WaitGroup
                                break
                            }
                            time.Sleep(time.Duration(conf.Common.Timeout_btw_cmd) * time.Second)
-                           in_response := readBuffForString_inbound(in_sshOut, client.Hostname+conf.Profiles[client.Profile].Enable_prompt)
+
+			   if in_command == conf.Profiles[client.Profile].Enable_enter_command {
+                                waitingPrompt = client.Hostname+conf.Profiles[client.Profile].Enable_prompt
+                           }
+                           if in_command == conf.Profiles[client.Profile].Enable_exit_command {
+                                waitingPrompt = client.Hostname+conf.Profiles[client.Profile].Unenable_prompt
+                           }
+
+                           in_response := readBuffForString_inbound(in_sshOut, waitingPrompt)
                            json_output := map[string]string{
                                "command" : in_command,
                                "ip": client.Ip,
@@ -308,7 +306,10 @@ func ssh_collector_constant(client Client, commands []string, wg *sync.WaitGroup
       wg_func.Add(1)
       go func() {
           defer wg_func.Done()
-          for {
+
+	  waitingPrompt := client.Hostname+conf.Profiles[client.Profile].Unenable_prompt
+
+	  for {
              time.Sleep(time.Duration(10000 * time.Nanosecond))
              select {
               case <- ticker.C:
@@ -317,12 +318,16 @@ func ssh_collector_constant(client Client, commands []string, wg *sync.WaitGroup
                     if client.Profile == "Router" {
                       if cmd[:3] == "rtr" {
                         command := strings.Split(cmd, ":")
-                        if command[1] == "exit" {
-                          continue
+
+                        if command[1] == conf.Profiles[client.Profile].Enable_enter_command {
+                           waitingPrompt = client.Hostname+conf.Profiles[client.Profile].Enable_prompt
+                        }
+                        if command[1] == conf.Profiles[client.Profile].Enable_exit_command {
+                           waitingPrompt = client.Hostname+conf.Profiles[client.Profile].Unenable_prompt
                         }
 
                         if conf.Common.Debug >= LOW {
-                          log.Printf("%s:%d:%d:%s:%s",client.Hostname,id,Threads.GetStatus(id),command[0],command[1])
+				log.Printf("%s:%d:%d:%s:%s:%s",client.Hostname,id,Threads.GetStatus(id),command[0], waitingPrompt, command[1])
                         }
 
                         err = write(command[1]+"\n", sshIn)
@@ -335,7 +340,7 @@ func ssh_collector_constant(client Client, commands []string, wg *sync.WaitGroup
                           return
                         }
                         time.Sleep(time.Duration(conf.Common.Timeout_btw_cmd) * time.Second)
-                        response = readBuffForString_constant(sshOut, client.Hostname+conf.Profiles[client.Profile].Enable_prompt)
+                        response = readBuffForString_constant(sshOut, waitingPrompt)
                         json_output := map[string]string{
                             "command" : command[1],
                             "ip": client.Ip,

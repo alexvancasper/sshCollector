@@ -109,10 +109,12 @@ type local struct {
 }
 
 type profiles struct {
-    Name string
-    Unenable_prompt string
-    Enable_prompt string
-    App_prompt string
+    Name string                 `toml:"name"`
+    Unenable_prompt string      `toml:"unenable_prompt"`
+    Enable_prompt string        `toml:"enable_prompt"`
+    App_prompt string           `toml:"app_prompt"`
+    Enable_enter_command string `toml:"enable_enter_command"`
+    Enable_exit_command string  `toml:"enable_exit_command"`
 }
 
 type Client struct{
@@ -290,6 +292,7 @@ func ParseConfig(conf Config) {
     log.Printf("---Remove zipped files: %t\n", conf.Common.Remove)
     log.Printf("---Collect Data: %t\n", conf.Common.Collect)
     log.Printf("---Timeout: %d\n", conf.Common.Timeout)
+    log.Printf("---Dump ommand: %s\n",conf.Common.Dumb)
     log.Print("--Inbound commands:")
     if conf.Inbound.Enable {
       log.Printf("---Enable: %t\n", conf.Inbound.Enable)
@@ -331,6 +334,8 @@ func ParseConfig(conf Config) {
     log.Printf("---Loaded device profiles: %d\n", len(conf.Profiles))
     for idx, _ := range conf.Profiles {
       log.Printf("---Name: %s\n", conf.Profiles[idx].Name)
+      log.Printf("----Enable enter command: %s\n", conf.Profiles[idx].Enable_enter_command)
+      log.Printf("----Enable exit command: %s\n", conf.Profiles[idx].Enable_exit_command)
       log.Printf("----Not enable prompt: %s\n", conf.Profiles[idx].Unenable_prompt)
       log.Printf("----Enable prompt: %s\n", conf.Profiles[idx].Enable_prompt)
       log.Printf("----Application prompt: %s\n", conf.Profiles[idx].App_prompt)
