@@ -210,7 +210,7 @@ func ssh_collector_constant(client Client, commands []string, wg *sync.WaitGroup
          _ , _ = in_sshOut.Read(buf)
 
 
-         log.Printf("%d:Second session was opened", id)
+	 log.Printf("%d:%s:Second session was opened", id, client.Hostname)
 
                msgs, err := inbound.amqpChannel.Consume(client.Hostname+"_in", "",false,false,false,false,nil)
                if err != nil {
@@ -233,6 +233,9 @@ func ssh_collector_constant(client Client, commands []string, wg *sync.WaitGroup
                  //
 
 		 waitingPrompt := client.Hostname+conf.Profiles[client.Profile].Unenable_prompt
+		 if conf.Common.Debug >= LOW {
+		     log.Printf("Reset to default waiting prompt in second session: %s", waitingPrompt)
+	         }
 
                  for d := range msgs {
                          log.Printf("[NEW CMD] %s", d.Body)
@@ -249,7 +252,9 @@ func ssh_collector_constant(client Client, commands []string, wg *sync.WaitGroup
                            if err := d.Ack(false); err != nil {
                            				log.Printf("%d: Error acknowledging message : %s", id, err)
                            			} else {
-                           				log.Printf("%d: Acknowledged message", id)
+							if conf.Common.Debug >= LOW {
+                           				   log.Printf("%d: Acknowledged message", id)
+							}
                            			}
                            log.Printf("%d: Received command '%s' for node %s", id, in_command, nodename)
                            // n, err := write_bytes(inbound_cmd["command"].(string), in_sshIn)
@@ -267,7 +272,11 @@ func ssh_collector_constant(client Client, commands []string, wg *sync.WaitGroup
                                 waitingPrompt = client.Hostname+conf.Profiles[client.Profile].Unenable_prompt
                            }
 
-                           in_response := readBuffForString_inbound(in_sshOut, waitingPrompt)
+			   if conf.Common.Debug >= LOW {
+			      log.Printf("plugin (second session) prompt: %s", waitingPrompt)
+			   }
+
+			   in_response := readBuffForString_inbound(in_sshOut, waitingPrompt)
                            json_output := map[string]string{
                                "command" : in_command,
                                "ip": client.Ip,

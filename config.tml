@@ -31,7 +31,7 @@ save_into_file = false
 # HIGH = 1 -> low logs level
 # MEDIUM = 2 -> mediumm logs 
 # LOW = 3 -> detailed logs
-debug = 3
+debug = 2
 
 # Timeout for SSH connection in seconds
 timeout = 5
@@ -43,21 +43,22 @@ timeout_prompt_read = 10000
 timeout_between_commands = 1
 
 [inbound_commands]
-enable = false
-socket = "amqp://guest:guest@localhost:5672/"
+enable = true
+socket = "amqp://guest:guest@10.90.3.228:5672/"
 exchange_name =  "inbound"
+#below routing key for output of commands
 routing_key = "commands"
 timer = 10000
 
 [parser."global"]
-enable = false
+enable = true
 amqp_exchange_name = "printouts"
 
-[parser."chassis"]
+[parser."display_admin"]
 enable = true
-key = "show\\schassis"
-uniq = "show_chassis"
-socket = "amqp://guest:guest@localhost:5672/"
+key = "display admin"
+uniq = "display_admin"
+socket = "amqp://guest:guest@10.90.3.228:5672/"
 
 # Example for udp socket output
 #[parser."hw_thermal"]
