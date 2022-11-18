@@ -7,21 +7,21 @@ zipping = false
 # Remove files after zipping
 remove_zipped_files = true
 # command file
-command_file = "command.lst"
+command_file = "./command.lst"
 # logs
-log_file = "/tmp/ssh_collector.log"
+log_file = "./ssh_collector.log"
 
 # path where locally saved files are stored
-base_dir = "/tmp/dst"
+base_dir = "./"
 
 # If true, then script will not connect and disconnect every 5-10 minutes. It will stay constantly on the nodes.
-stay_on_node = false
+stay_on_node = true
 
 # Send  dumb_command ever keepalive
 dumb_command = "!dump command"
 
 # Seconds
-interval = 300
+interval = 10
 keepalive = 100
 
 # In stay mode, need to save output into file?
@@ -31,7 +31,7 @@ save_into_file = false
 # HIGH = 1 -> low logs level
 # MEDIUM = 2 -> mediumm logs 
 # LOW = 3 -> detailed logs
-debug = 1
+debug = 3
 
 # Timeout for SSH connection in seconds
 timeout = 5
@@ -43,14 +43,14 @@ timeout_prompt_read = 10000
 timeout_between_commands = 1
 
 [inbound_commands]
-enable = true
+enable = false
 socket = "amqp://guest:guest@localhost:5672/"
 exchange_name =  "inbound"
 routing_key = "commands"
 timer = 10000
 
 [parser."global"]
-enable = true
+enable = false
 amqp_exchange_name = "printouts"
 
 [parser."chassis"]
@@ -134,7 +134,9 @@ pubkey_path = "/home/user/.ssh/id_rsa"
 [Profiles."Router"]
 name = "Router"
 unenable_prompt = ">"
-enable_prompt = "#"
+enable_prompt = "]"
+enable_enter_command = "system-view"
+enable_exit_command = "quit"
 
 [Profiles."Firewall"]
 name = "Firewall"
@@ -144,19 +146,10 @@ app_prompt = ">"
 
 
 [devices]
-[devices."10.0.2.1"]
-Hostname = "LabRouter1"
-Ip="10.0.2.1"
-User = "admin"
+[devices."10.90.3.228"]
+Hostname = "HUAWEI"
+Ip="10.90.3.228"
+User = "huawei"
 Port = 22
-Password="SecretPassword1"
+Password="huawei123"
 Profile = "Router"
-
-[devices."10.0.2.2"]
-Hostname = "labRouter2"
-Ip="10.0.2.2"
-User = "admin"
-Port = 22
-Password="SecretPassword"
-Profile = "Router"
-
