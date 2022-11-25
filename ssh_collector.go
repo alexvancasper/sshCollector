@@ -16,38 +16,38 @@ import (
 	agent "golang.org/x/crypto/ssh/agent"
 )
 
-func rreadBuffForString(sshOut io.Reader, prompt string) string {
-	buf := make([]byte, 1000)
-	// buf := make([]byte, 65535)
-	n, err := sshOut.Read(buf) //this reads the ssh terminal
-	waitingString := ""
-	if err == nil {
-		waitingString = string(buf[:n])
-	}
-	if len(waitingString) < len(prompt) {
-		prompt = prompt[len(prompt)-1:]
-	}
-	for waitingString[len(waitingString)-len(prompt):] != prompt {
-		n, err = sshOut.Read(buf)
-		waitingString += string(buf[:n])
-		if err == io.EOF {
-			// log.Printf("Normal exit (EOF).")
-			break
-		}
+// func rreadBuffForString(sshOut io.Reader, prompt string) string {
+// 	buf := make([]byte, 1000)
+// 	// buf := make([]byte, 65535)
+// 	n, err := sshOut.Read(buf) //this reads the ssh terminal
+// 	waitingString := ""
+// 	if err == nil {
+// 		waitingString = string(buf[:n])
+// 	}
+// 	if len(waitingString) < len(prompt) {
+// 		prompt = prompt[len(prompt)-1:]
+// 	}
+// 	for waitingString[len(waitingString)-len(prompt):] != prompt {
+// 		n, err = sshOut.Read(buf)
+// 		waitingString += string(buf[:n])
+// 		if err == io.EOF {
+// 			// log.Printf("Normal exit (EOF).")
+// 			break
+// 		}
 
-		if err != nil {
-			log.Printf("Error readBuffForString: %#v\n", err)
-			break
-		}
+// 		if err != nil {
+// 			log.Printf("Error readBuffForString: %#v\n", err)
+// 			break
+// 		}
 
-		if len(waitingString) < len(prompt) {
-			prompt = prompt[len(prompt)-1:]
-		}
-	}
-	return waitingString
-}
+// 		if len(waitingString) < len(prompt) {
+// 			prompt = prompt[len(prompt)-1:]
+// 		}
+// 	}
+// 	return waitingString
+// }
 
-func readSSHInput(sshOut io.Reader, prompt *regexp.Regexp) string {
+func readSSHInput(sshOut io.Reader, prompt *regexp.Regexp) []byte {
 	buf := make([]byte, 1000)
 	var waitingString bytes.Buffer
 
@@ -68,7 +68,7 @@ func readSSHInput(sshOut io.Reader, prompt *regexp.Regexp) string {
 			break
 		}
 	}
-	return waitingString.String()
+	return waitingString.Bytes()
 }
 
 func write(cmd string, sshIn io.WriteCloser) error {
@@ -94,7 +94,7 @@ func ssh_collector(client Client, commands []string, wg *sync.WaitGroup, filenam
 		cssh.TTY_OP_OSPEED: 115200, // output speed = 14.4kbaud
 	}
 	var (
-		response   string
+		response   []byte
 		authmethod []cssh.AuthMethod
 	)
 
@@ -147,7 +147,7 @@ func ssh_collector(client Client, commands []string, wg *sync.WaitGroup, filenam
 	file, err := os.Create(filename)
 	if err != nil {
 		log.Printf("Host: %s Error: ", client.Hostname)
-		log.Print("Unable to create file for saving output data from ssh node: %#v\n", err)
+		log.Print("Unable to create file for saving output data for node: %#v\n", err)
 		return
 	}
 	filenames.Add(filename)
@@ -174,7 +174,7 @@ func ssh_collector(client Client, commands []string, wg *sync.WaitGroup, filenam
 				}
 				write(command[1], sshIn)
 				response = readSSHInput(sshOut, waitingPromptRg)
-				file.WriteString(response)
+				file.Write(response)
 			}
 		}
 	}
