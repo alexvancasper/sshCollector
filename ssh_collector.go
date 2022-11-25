@@ -16,39 +16,8 @@ import (
 	agent "golang.org/x/crypto/ssh/agent"
 )
 
-// func rreadBuffForString(sshOut io.Reader, prompt string) string {
-// 	buf := make([]byte, 1000)
-// 	// buf := make([]byte, 65535)
-// 	n, err := sshOut.Read(buf) //this reads the ssh terminal
-// 	waitingString := ""
-// 	if err == nil {
-// 		waitingString = string(buf[:n])
-// 	}
-// 	if len(waitingString) < len(prompt) {
-// 		prompt = prompt[len(prompt)-1:]
-// 	}
-// 	for waitingString[len(waitingString)-len(prompt):] != prompt {
-// 		n, err = sshOut.Read(buf)
-// 		waitingString += string(buf[:n])
-// 		if err == io.EOF {
-// 			// log.Printf("Normal exit (EOF).")
-// 			break
-// 		}
-
-// 		if err != nil {
-// 			log.Printf("Error readBuffForString: %#v\n", err)
-// 			break
-// 		}
-
-// 		if len(waitingString) < len(prompt) {
-// 			prompt = prompt[len(prompt)-1:]
-// 		}
-// 	}
-// 	return waitingString
-// }
-
 func readSSHInput(sshOut io.Reader, prompt *regexp.Regexp) []byte {
-	buf := make([]byte, 1000)
+	buf := make([]byte, 65535)
 	var waitingString bytes.Buffer
 
 	n, err := sshOut.Read(buf) //this reads the ssh terminal
@@ -67,6 +36,7 @@ func readSSHInput(sshOut io.Reader, prompt *regexp.Regexp) []byte {
 			log.Printf("Error readSSHInput: %#v\n", err)
 			break
 		}
+		time.Sleep(time.Duration(conf.Common.Timeout_read) * time.Nanosecond)
 	}
 	return waitingString.Bytes()
 }
@@ -147,7 +117,7 @@ func ssh_collector(client Client, commands []string, wg *sync.WaitGroup, filenam
 	file, err := os.Create(filename)
 	if err != nil {
 		log.Printf("Host: %s Error: ", client.Hostname)
-		log.Print("Unable to create file for saving output data for node: %#v\n", err)
+		log.Printf("Unable to create file for saving output data for node: %#v\n", err)
 		return
 	}
 	filenames.Add(filename)
@@ -162,11 +132,11 @@ func ssh_collector(client Client, commands []string, wg *sync.WaitGroup, filenam
 
 				if command[1] == conf.Profiles[client.Profile].Enable_enter_command {
 					waitingPromptRg, _ = regexp.Compile(fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Enable_prompt))
-					waitBracket = conf.Profiles[client.Profile].Enable_prompt
+					waitBracket = fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Enable_prompt)
 				}
 				if command[1] == conf.Profiles[client.Profile].Enable_exit_command {
 					waitingPromptRg, _ = regexp.Compile(fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Unenable_prompt))
-					waitBracket = conf.Profiles[client.Profile].Unenable_prompt
+					waitBracket = fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Unenable_prompt)
 				}
 
 				if conf.Common.Debug >= LOW {
