@@ -11,9 +11,11 @@ import (
   "sync"
   "log"
   "strings"
+  "regexp"
+  "bytes"
 )
 
-func readBuffForString(sshOut io.Reader, prompt string) string {
+func rreadBuffForStringeadBuffForString(sshOut io.Reader, prompt string) string {
   buf := make([]byte, 1000)
   // buf := make([]byte, 65535)
   n, err := sshOut.Read(buf) //this reads the ssh terminal
@@ -42,6 +44,30 @@ func readBuffForString(sshOut io.Reader, prompt string) string {
     }
   }
   return waitingString
+}
+
+func readSSHInput(sshOut io.Reader, prompt regexp) string {
+  buf := make([]byte, 1000)
+  var waitingString bytes.Buffer
+
+  n, err := sshOut.Read(buf) //this reads the ssh terminal
+  if err == nil {
+    waitingString = string(buf[:n])
+  }
+  for !prompt.MatchString(waitingString) {
+    n, err = sshOut.Read(buf)
+    waitingString.Write(buf[:n])
+
+    if err == io.EOF {
+      // log.Printf("Normal exit (EOF).")
+      break
+    }
+    if err != nil {
+      log.Printf("Error readSSHInput: %#v\n",err)
+      break
+    }
+  }
+  return waitingString.String()
 }
 
 
@@ -127,7 +153,7 @@ func ssh_collector(client Client, commands []string, wg *sync.WaitGroup, filenam
       }
       filenames.Add(filename)
 
-      waitingPrompt := client.Hostname+conf.Profiles[client.Profile].Unenable_prompt
+      waitingPromptRg, _ := regexp.Compile(fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Unenable_prompt))
 
       for _, cmd := range commands {
         if client.Profile == "Router" {
@@ -135,17 +161,17 @@ func ssh_collector(client Client, commands []string, wg *sync.WaitGroup, filenam
             command := strings.Split(cmd, ":")
 
 	    if command[1] == conf.Profiles[client.Profile].Enable_enter_command {
-		    waitingPrompt = client.Hostname+conf.Profiles[client.Profile].Enable_prompt
+		    waitingPromptRg,_ = regexp.Compile(fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Enable_prompt))
 	    }
 	    if command[1] == conf.Profiles[client.Profile].Enable_exit_command {
-		    waitingPrompt = client.Hostname+conf.Profiles[client.Profile].Unenable_prompt
+		    waitingPromptRg,_ = regexp.Compile(fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Unenable_prompt))
 	    }
 
             if conf.Common.Debug >= LOW {
-		    log.Printf("%s:%s:%s:%s",client.Hostname,command[0],waitingPrompt,command[1])
+		    log.Printf("%s:%s:%s",client.Hostname,command[0],command[1])
             }
             write(command[1], sshIn)
-            response = readBuffForString(sshOut, waitingPrompt)
+            response = readSSHInput(sshOut, waitingPromptRg)
             file.WriteString(response)
           }
         }
