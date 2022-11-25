@@ -16,6 +16,38 @@ import (
 	agent "golang.org/x/crypto/ssh/agent"
 )
 
+func readSSHInputFile(sshOut io.Reader, prompt *regexp.Regexp, file *os.File) []byte {
+	buf := make([]byte, 65535)
+	var waitingString bytes.Buffer
+
+	n, err := sshOut.Read(buf) //this reads the ssh terminal
+	if err == nil {
+		waitingString.Write(buf[:n])
+	}
+	for !prompt.Match(waitingString.Bytes()) {
+
+		if waitingString.Len() > 1024*1024*10 { // every 10MB of data from the node will be truncated to the file
+			_, err = file.Write(waitingString.Bytes())
+			if err == nil {
+				waitingString.Reset()
+			}
+		}
+
+		n, err = sshOut.Read(buf)
+		waitingString.Write(buf[:n])
+		if err == io.EOF {
+			// log.Printf("Normal exit (EOF).")
+			break
+		}
+		if err != nil {
+			log.Printf("Error readSSHInputFile: %#v\n", err)
+			break
+		}
+		time.Sleep(time.Duration(conf.Common.Timeout_read) * time.Nanosecond)
+	}
+	return waitingString.Bytes()
+}
+
 func readSSHInput(sshOut io.Reader, prompt *regexp.Regexp) []byte {
 	buf := make([]byte, 65535)
 	var waitingString bytes.Buffer
@@ -25,9 +57,9 @@ func readSSHInput(sshOut io.Reader, prompt *regexp.Regexp) []byte {
 		waitingString.Write(buf[:n])
 	}
 	for !prompt.Match(waitingString.Bytes()) {
+
 		n, err = sshOut.Read(buf)
 		waitingString.Write(buf[:n])
-
 		if err == io.EOF {
 			// log.Printf("Normal exit (EOF).")
 			break
@@ -123,7 +155,7 @@ func ssh_collector(client Client, commands []string, wg *sync.WaitGroup, filenam
 	filenames.Add(filename)
 
 	waitingPromptRg, _ := regexp.Compile(fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Unenable_prompt))
-	waitBracket := conf.Profiles[client.Profile].Unenable_prompt
+	waitBracket := fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Unenable_prompt)
 
 	for _, cmd := range commands {
 		if client.Profile == "Router" {
@@ -143,7 +175,7 @@ func ssh_collector(client Client, commands []string, wg *sync.WaitGroup, filenam
 					log.Printf("%s:%s:%s:%s", client.Hostname, command[0], waitBracket, command[1])
 				}
 				write(command[1], sshIn)
-				response = readSSHInput(sshOut, waitingPromptRg)
+				response = readSSHInputFile(sshOut, waitingPromptRg, file)
 				file.Write(response)
 			}
 		}
