@@ -116,6 +116,7 @@ type profiles struct {
 	Enable_enter_command string `toml:"enable_enter_command"`
 	Enable_exit_command  string `toml:"enable_exit_command"`
 	Command_file         string `toml:"command_file"`
+	Terminal_mode        string `toml:"terminal_mode"`
 }
 
 type Client struct {
@@ -340,6 +341,7 @@ func ParseConfig(conf Config) {
 		log.Printf("----Enable prompt: %s\n", conf.Profiles[idx].Enable_prompt)
 		log.Printf("----Application prompt: %s\n", conf.Profiles[idx].App_prompt)
 		log.Printf("----Command file: %s\n", conf.Profiles[idx].Command_file)
+		log.Printf("----Terminal mode: %s\n", conf.Profiles[idx].Terminal_mode)
 	}
 	log.Print("--Authentication:")
 	log.Printf("---One_for_all: %t\n", conf.Auth.One_for_all)
