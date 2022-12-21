@@ -153,7 +153,8 @@ Hostname = "HUAWEI"
 Ip="10.90.3.13"
 User = "huawei"
 Port = 22
-Password="huawei123"
+# base64(huawei123)=aHVhd2VpMTIz
+Password="aHVhd2VpMTIz"
 Profile = "Huawei"
 
 [devices."10.90.3.14"]
@@ -161,5 +162,6 @@ Hostname = "CISCO"
 Ip="10.90.3.13"
 User = "cisco"
 Port = 22
-Password="cisco123"
+# base64(huawei123)=Y2lzY28xMjM=
+Password="Y2lzY2 8xMjM="
 Profile = "Cisco"

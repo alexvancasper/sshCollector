@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
@@ -117,11 +118,11 @@ func ssh_collector(client Client, commands map[string][]string, wg *sync.WaitGro
 		}
 		authmethod = []cssh.AuthMethod{cssh.PublicKeys(signers...)}
 	} else {
-		authmethod = []cssh.AuthMethod{cssh.Password(client.Password)}
-		// Cb := func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
-		//     return []string{client.Password, client.Password}, nil
-		// }
-		// authmethod = []cssh.AuthMethod{cssh.RetryableAuthMethod(cssh.KeyboardInteractiveChallenge(Cb), 2)}
+		pass, err := base64.StdEncoding.DecodeString(client.Password)
+		if err != nil {
+			log.Fatalf("Cannot decode password of node %s err: %s", client.Hostname, err)
+		}
+		authmethod = []cssh.AuthMethod{cssh.Password(string(pass))}
 	}
 	conn, err := cssh.Dial("tcp", fmt.Sprintf("%s:%d", client.Ip, client.Port), &cssh.ClientConfig{
 		User:            client.User,

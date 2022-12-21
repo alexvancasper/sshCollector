@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -65,7 +66,11 @@ func ssh_collector_constant(client Client, commands map[string][]string, wg *syn
 		}
 		authmethod = []cssh.AuthMethod{cssh.PublicKeys(signers...)}
 	} else {
-		authmethod = []cssh.AuthMethod{cssh.Password(client.Password)}
+		pass, err := base64.StdEncoding.DecodeString(client.Password)
+		if err != nil {
+			log.Fatalf("Cannot decode password of node %s err: %s", client.Hostname, err)
+		}
+		authmethod = []cssh.AuthMethod{cssh.Password(string(pass))}
 	}
 	Threads.SetStatus(id, START)
 	conn, err := cssh.Dial("tcp", fmt.Sprintf("%s:%d", client.Ip, client.Port), &cssh.ClientConfig{
