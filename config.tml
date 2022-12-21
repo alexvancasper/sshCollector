@@ -29,7 +29,7 @@ save_into_file = false
 # HIGH = 1 -> low logs level
 # MEDIUM = 2 -> mediumm logs 
 # LOW = 3 -> detailed logs
-debug = 2
+debug = 3
 
 # Timeout for SSH connection in seconds
 timeout = 5
@@ -137,6 +137,7 @@ enable_prompt = "]"
 enable_enter_command = "system-view"
 enable_exit_command = "quit"
 command_file = "./command_huawei.lst"
+terminal_mode = "vt100"
 
 [Profiles."Cisco"]
 name = "Cisco"
@@ -145,7 +146,7 @@ enable_prompt = "#"
 enable_enter_command = "enable"
 enable_exit_command = "exit"
 command_file = "./command_cisco.lst"
-
+terminal_mode = "xterm"
 
 [devices]
 [devices."10.90.3.13"]
@@ -163,5 +164,5 @@ Ip="10.90.3.13"
 User = "cisco"
 Port = 22
 # base64(huawei123)=Y2lzY28xMjM=
-Password="Y2lzY2 8xMjM="
+Password="Y2lzY28xMjM="
 Profile = "Cisco"
