@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,7 +17,7 @@ import (
 	agent "golang.org/x/crypto/ssh/agent"
 )
 
-func ssh_collector_constant(client Client, commands []string, wg *sync.WaitGroup, filenames *Output_file, channel chan string, Threads *States, id int, plugins map[string]Plugin, inbound Inbound) error {
+func ssh_collector_constant(client Client, commands map[string][]string, wg *sync.WaitGroup, filenames *Output_file, channel chan string, Threads *States, id int, plugins map[string]Plugin, inbound Inbound) error {
 	defer log.Print("[SCC] done")
 	defer wg.Done()
 	// defer Threads.SetStatus(id, NEW)
@@ -26,12 +27,12 @@ func ssh_collector_constant(client Client, commands []string, wg *sync.WaitGroup
 		}
 	}()
 
-	type output_format struct {
-		nodename string `json:"nodename"`
-		ip       string `json:"ip"`
-		command  string `json:"command"`
-		output   string `json:"output"`
-	}
+	// type output_format struct {
+	// 	nodename string `json:"nodename"`
+	// 	ip       string `json:"ip"`
+	// 	command  string `json:"command"`
+	// 	output   string `json:"output"`
+	// }
 
 	var (
 		response   []byte
@@ -65,7 +66,11 @@ func ssh_collector_constant(client Client, commands []string, wg *sync.WaitGroup
 		}
 		authmethod = []cssh.AuthMethod{cssh.PublicKeys(signers...)}
 	} else {
-		authmethod = []cssh.AuthMethod{cssh.Password(client.Password)}
+		pass, err := base64.StdEncoding.DecodeString(client.Password)
+		if err != nil {
+			log.Fatalf("Cannot decode password of node %s err: %s", client.Hostname, err)
+		}
+		authmethod = []cssh.AuthMethod{cssh.Password(string(pass))}
 	}
 	Threads.SetStatus(id, START)
 	conn, err := cssh.Dial("tcp", fmt.Sprintf("%s:%d", client.Ip, client.Port), &cssh.ClientConfig{
@@ -143,6 +148,7 @@ func ssh_collector_constant(client Client, commands []string, wg *sync.WaitGroup
 			in_sshOut, err := in_session.StdoutPipe()
 			handleError(err)
 			in_sshIn, err := in_session.StdinPipe()
+			handleError(err)
 			err = in_session.RequestPty("vt100", 0, 0, modes)
 			handleError(err)
 			err = in_session.Shell()
@@ -269,63 +275,58 @@ func ssh_collector_constant(client Client, commands []string, wg *sync.WaitGroup
 			select {
 			case <-ticker.C:
 				// Main commands
-				for _, cmd := range commands {
-					if client.Profile == "Router" {
-						if cmd[:3] == "rtr" {
-							command := strings.Split(cmd, ":")
+				for _, cmd := range commands[client.Profile] {
 
-							if command[1] == conf.Profiles[client.Profile].Enable_enter_command {
-								waitingPromptRg, _ = regexp.Compile(fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Enable_prompt))
-								waitBracket = fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Enable_prompt)
-							}
-							if command[1] == conf.Profiles[client.Profile].Enable_exit_command {
-								waitingPromptRg, _ = regexp.Compile(fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Unenable_prompt))
-								waitBracket = fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Unenable_prompt)
-							}
+					if cmd == conf.Profiles[client.Profile].Enable_enter_command {
+						waitingPromptRg, _ = regexp.Compile(fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Enable_prompt))
+						waitBracket = fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Enable_prompt)
+					}
+					if cmd == conf.Profiles[client.Profile].Enable_exit_command {
+						waitingPromptRg, _ = regexp.Compile(fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Unenable_prompt))
+						waitBracket = fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Unenable_prompt)
+					}
 
-							if conf.Common.Debug >= LOW {
-								log.Printf("%s:%d:%d:%s:%s:%s", client.Hostname, id, Threads.GetStatus(id), command[0], waitBracket, command[1])
-							}
+					if conf.Common.Debug >= LOW {
+						log.Printf("%s:%d:%d:%s:%s", client.Hostname, id, Threads.GetStatus(id), waitBracket, cmd)
+					}
 
-							err = write(command[1]+"\n", sshIn)
-							if err == io.EOF {
-								ticker.Stop()
-								keepalive.Stop()
-								log.Printf("EoF on %s", client.Hostname)
-								Threads.SetStatus(id, ERR)
-								log.Printf("Set for %d status %d", id, ERR)
-								return
-							}
-							time.Sleep(time.Duration(conf.Common.Timeout_btw_cmd) * time.Second)
+					err = write(cmd+"\n", sshIn)
+					if err == io.EOF {
+						ticker.Stop()
+						keepalive.Stop()
+						log.Printf("EoF on %s", client.Hostname)
+						Threads.SetStatus(id, ERR)
+						log.Printf("Set for %d status %d", id, ERR)
+						return
+					}
+					time.Sleep(time.Duration(conf.Common.Timeout_btw_cmd) * time.Second)
 
-							response = readSSHInput(sshOut, waitingPromptRg)
-							json_output := map[string]string{
-								"command":   command[1],
-								"ip":        client.Ip,
-								"nodename":  client.Hostname,
-								"output":    string(response),
-								"timestamp": fmt.Sprintf("%d", time.Now().UnixNano()),
+					response = readSSHInput(sshOut, waitingPromptRg)
+					json_output := map[string]string{
+						"command":   cmd,
+						"ip":        client.Ip,
+						"nodename":  client.Hostname,
+						"output":    string(response),
+						"timestamp": fmt.Sprintf("%d", time.Now().UnixNano()),
+					}
+					json1, err := json.Marshal(json_output)
+					if err != nil {
+						log.Println("Error during marshalling of JSON object: ", err)
+					}
+					if conf.Common.Output_to_file {
+						file.Write(response)
+					}
+					if plugin_key, ok := checkPlugin(cmd, plugins); ok {
+						if plugins[plugin_key].class == "amqp" {
+							publish_result := publishPlugin(plugins[plugin_key].amqpSocket, plugins[plugin_key].uniq, json1)
+							if !publish_result {
+								log.Printf("Re-init for plugin: %s", plugins[plugin_key].uniq)
+								// init plugin and publish again
+								plugins[plugin_key] = ReinitOnePluginChannel(plugins[plugin_key])
+								_ = publishPlugin(plugins[plugin_key].amqpSocket, plugins[plugin_key].uniq, json1)
 							}
-							json1, err := json.Marshal(json_output)
-							if err != nil {
-								log.Println("Error during marshalling of JSON object: ", err)
-							}
-							if conf.Common.Output_to_file {
-								file.Write(response)
-							}
-							if plugin_key, ok := checkPlugin(command[1], plugins); ok == true {
-								if plugins[plugin_key].class == "amqp" {
-									publish_result := publishPlugin(plugins[plugin_key].amqpSocket, plugins[plugin_key].uniq, json1)
-									if !publish_result {
-										log.Printf("Re-init for plugin: %s", plugins[plugin_key].uniq)
-										// init plugin and publish again
-										plugins[plugin_key] = ReinitOnePluginChannel(plugins[plugin_key])
-										_ = publishPlugin(plugins[plugin_key].amqpSocket, plugins[plugin_key].uniq, json1)
-									}
-								} else {
-									plugins[plugin_key].socket.Write(json1)
-								}
-							}
+						} else {
+							plugins[plugin_key].socket.Write(json1)
 						}
 					}
 				}

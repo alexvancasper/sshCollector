@@ -6,8 +6,6 @@ collect_data = true
 zipping = false
 # Remove files after zipping
 remove_zipped_files = true
-# command file
-command_file = "./command.lst"
 # logs
 log_file = "./ssh_collector.log"
 
@@ -43,7 +41,7 @@ timeout_prompt_read = 10000
 timeout_between_commands = 1
 
 [inbound_commands]
-enable = true
+enable = false
 socket = "amqp://guest:guest@10.90.3.228:5672/"
 exchange_name =  "inbound"
 #below routing key for output of commands
@@ -51,7 +49,7 @@ routing_key = "commands"
 timer = 10000
 
 [parser."global"]
-enable = true
+enable = false
 amqp_exchange_name = "printouts"
 
 [parser."display_admin"]
@@ -132,25 +130,38 @@ pubkey_path = "/home/user/.ssh/id_rsa"
 #prompt means concatenation of hostname of node and enable_prompt symbol
 [Profiles]
 
-[Profiles."Router"]
-name = "Router"
+[Profiles."Huawei"]
+name = "Huawei"
 unenable_prompt = ">"
 enable_prompt = "]"
 enable_enter_command = "system-view"
 enable_exit_command = "quit"
+command_file = "./command_huawei.lst"
 
-[Profiles."Firewall"]
-name = "Firewall"
+[Profiles."Cisco"]
+name = "Cisco"
 unenable_prompt = ">"
 enable_prompt = "#"
-app_prompt = ">"
+enable_enter_command = "enable"
+enable_exit_command = "exit"
+command_file = "./command_cisco.lst"
 
 
 [devices]
-[devices."10.90.3.228"]
+[devices."10.90.3.13"]
 Hostname = "HUAWEI"
-Ip="10.90.3.228"
+Ip="10.90.3.13"
 User = "huawei"
 Port = 22
-Password="huawei123"
-Profile = "Router"
+# base64(huawei123)=aHVhd2VpMTIz
+Password="aHVhd2VpMTIz"
+Profile = "Huawei"
+
+[devices."10.90.3.14"]
+Hostname = "CISCO"
+Ip="10.90.3.13"
+User = "cisco"
+Port = 22
+# base64(huawei123)=Y2lzY28xMjM=
+Password="Y2lzY2 8xMjM="
+Profile = "Cisco"

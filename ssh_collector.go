@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
@@ -83,7 +84,7 @@ func write_bytes(cmd []byte, sshIn io.WriteCloser) (int, error) {
 	return n, err
 }
 
-func ssh_collector(client Client, commands []string, wg *sync.WaitGroup, filenames *Output_file) {
+func ssh_collector(client Client, commands map[string][]string, wg *sync.WaitGroup, filenames *Output_file) {
 	defer wg.Done()
 	defer func() {
 		if r := recover(); r != nil {
@@ -117,11 +118,11 @@ func ssh_collector(client Client, commands []string, wg *sync.WaitGroup, filenam
 		}
 		authmethod = []cssh.AuthMethod{cssh.PublicKeys(signers...)}
 	} else {
-		authmethod = []cssh.AuthMethod{cssh.Password(client.Password)}
-		// Cb := func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
-		//     return []string{client.Password, client.Password}, nil
-		// }
-		// authmethod = []cssh.AuthMethod{cssh.RetryableAuthMethod(cssh.KeyboardInteractiveChallenge(Cb), 2)}
+		pass, err := base64.StdEncoding.DecodeString(client.Password)
+		if err != nil {
+			log.Fatalf("Cannot decode password of node %s err: %s", client.Hostname, err)
+		}
+		authmethod = []cssh.AuthMethod{cssh.Password(string(pass))}
 	}
 	conn, err := cssh.Dial("tcp", fmt.Sprintf("%s:%d", client.Ip, client.Port), &cssh.ClientConfig{
 		User:            client.User,
@@ -157,28 +158,23 @@ func ssh_collector(client Client, commands []string, wg *sync.WaitGroup, filenam
 	waitingPromptRg, _ := regexp.Compile(fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Unenable_prompt))
 	waitBracket := fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Unenable_prompt)
 
-	for _, cmd := range commands {
-		if client.Profile == "Router" {
-			if cmd[:3] == "rtr" {
-				command := strings.Split(cmd, ":")
+	for _, cmd := range commands[client.Profile] {
 
-				if command[1] == conf.Profiles[client.Profile].Enable_enter_command {
-					waitingPromptRg, _ = regexp.Compile(fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Enable_prompt))
-					waitBracket = fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Enable_prompt)
-				}
-				if command[1] == conf.Profiles[client.Profile].Enable_exit_command {
-					waitingPromptRg, _ = regexp.Compile(fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Unenable_prompt))
-					waitBracket = fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Unenable_prompt)
-				}
-
-				if conf.Common.Debug >= LOW {
-					log.Printf("%s:%s:%s:%s", client.Hostname, command[0], waitBracket, command[1])
-				}
-				write(command[1], sshIn)
-				response = readSSHInputFile(sshOut, waitingPromptRg, file)
-				file.Write(response)
-			}
+		if cmd == conf.Profiles[client.Profile].Enable_enter_command {
+			waitingPromptRg, _ = regexp.Compile(fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Enable_prompt))
+			waitBracket = fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Enable_prompt)
 		}
+		if cmd == conf.Profiles[client.Profile].Enable_exit_command {
+			waitingPromptRg, _ = regexp.Compile(fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Unenable_prompt))
+			waitBracket = fmt.Sprintf("%s.*%s", client.Hostname, conf.Profiles[client.Profile].Unenable_prompt)
+		}
+
+		if conf.Common.Debug >= LOW {
+			log.Printf("%s:%s:%s", client.Hostname, waitBracket, cmd)
+		}
+		write(cmd, sshIn)
+		response = readSSHInputFile(sshOut, waitingPromptRg, file)
+		file.Write(response)
 	}
 	file.Close()
 	session.Close()
