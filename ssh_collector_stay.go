@@ -73,12 +73,32 @@ func ssh_collector_constant(client Client, commands map[string][]string, wg *syn
 		authmethod = []cssh.AuthMethod{cssh.Password(string(pass))}
 	}
 	Threads.SetStatus(id, START)
+
+	var myConfig cssh.Config
+	myConfig.SetDefaults()
+	myConfig.Ciphers = append(myConfig.Ciphers, "aes128-cbc", "aes192-cbc", "aes256-cbc", "3des-cbc")
+	myConfig.MACs = []string{"hmac-sha2-256", "hmac-sha1", "hmac-sha1-96", "hmac-sha2-256-etm@openssh.com"} //TODO: this is a WA - https://github.com/golang/go/issues/32075
+
+	sshConfig := cssh.ClientConfig{
+		User:            client.User,
+		Auth:            authmethod,
+		ClientVersion:   "SSH-2.0-MyCollector2.0",
+		HostKeyCallback: cssh.InsecureIgnoreHostKey(),
+		Timeout:         time.Duration(conf.Common.Timeout) * time.Second,
+		Config:          myConfig,
+	}
+
+	if conf.Common.Debug >= LOW+1 {
+		log.Printf("%+v\n", sshConfig)
+	}
+
 	conn, err := cssh.Dial("tcp", fmt.Sprintf("%s:%d", client.Ip, client.Port), &cssh.ClientConfig{
 		User:            client.User,
 		Auth:            authmethod,
 		ClientVersion:   "SSH-2.0-MyCollector2.0",
 		HostKeyCallback: cssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(conf.Common.Timeout) * time.Second,
+		Config:          myConfig,
 	})
 	if err != nil {
 		// panic(err)

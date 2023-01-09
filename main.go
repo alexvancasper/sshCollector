@@ -355,7 +355,7 @@ func ParseConfig(conf Config) {
 
 func main() {
 	// ParseConfig(conf)
-	conf_file := "/opt/myCollector/etc/ssh_collector/ssh_collector.tml"
+	conf_file := "./config.tml"
 	if len(os.Args) == 1 {
 		if _, err := os.Stat(conf_file); err == nil {
 			if _, err := toml.DecodeFile(conf_file, &conf); err != nil {
