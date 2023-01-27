@@ -14,13 +14,13 @@ def show_data(ch, method, properties, input):
         timestamp = input["timestamp"]
         print(input)
         
-        cmd="show chassis detail"
-        raw_data = get_add_data(node, cmd)
-        print(raw_data)
-        get_add_data(node,"system-view")
-        raw_data2  = get_add_data(node, "display interface description")
-        print(raw_data2)
-        get_add_data(node, "quit")
+        #cmd="show chassis detail"
+        #raw_data = get_add_data(node, cmd)
+        #print(raw_data)
+        #get_add_data(node,"system-view")
+        #raw_data2  = get_add_data(node, "display interface description")
+        #print(raw_data2)
+        #get_add_data(node, "quit")
 
 def get_add_data(node, command):
     credentials = pika.PlainCredentials("guest", "guest")
@@ -57,11 +57,11 @@ def rabbit():
     # receive first data from nodes
     
     credentials = pika.PlainCredentials("guest", "guest")
-    parameters = pika.ConnectionParameters('10.90.3.228',5672, '/', credentials )
+    parameters = pika.ConnectionParameters('10.90.3.15',5672, '/', credentials )
     connection = pika.BlockingConnection(parameters)
     input_channel = connection.channel()
     input_channel.exchange_declare(exchange="printouts", durable=True, exchange_type="direct",auto_delete=True)
-    in_result = input_channel.queue_declare(queue="display_admin", exclusive=False, auto_delete=True)
+    in_result = input_channel.queue_declare(queue="disadm", exclusive=False, auto_delete=True)
     in_queue_name = in_result.method.queue
     input_channel.queue_bind(exchange="printouts", queue=in_queue_name)
     print(" [ * ] Waiting for logs routing key is \"display_admin\". To exit press Ctrl+C")

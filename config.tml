@@ -7,7 +7,7 @@ zipping = false
 # Remove files after zipping
 remove_zipped_files = true
 # logs
-log_file = "./ssh_collector.log"
+log_file = "/tmp/ssh_collector.log"
 
 # path where locally saved files are stored
 base_dir = "./"
@@ -29,7 +29,7 @@ save_into_file = false
 # HIGH = 1 -> low logs level
 # MEDIUM = 2 -> mediumm logs 
 # LOW = 3 -> detailed logs
-debug = 2
+debug = 3
 
 # Timeout for SSH connection in seconds
 timeout = 5
@@ -148,20 +148,20 @@ command_file = "./command_cisco.lst"
 
 
 [devices]
-[devices."10.90.3.13"]
+[devices."10.90.3.15"]
 Hostname = "HUAWEI"
-Ip="10.90.3.13"
+Ip="10.90.3.15"
 User = "huawei"
 Port = 22
 # base64(huawei123)=aHVhd2VpMTIz
 Password="aHVhd2VpMTIz"
 Profile = "Huawei"
 
-[devices."10.90.3.14"]
-Hostname = "CISCO"
-Ip="10.90.3.13"
-User = "cisco"
-Port = 22
-# base64(huawei123)=Y2lzY28xMjM=
-Password="Y2lzY2 8xMjM="
-Profile = "Cisco"
+# [devices."10.90.3.14"]
+# Hostname = "CISCO"
+# Ip="10.90.3.13"
+# User = "cisco"
+# Port = 22
+# # base64(huawei123)=Y2lzY28xMjM=
+# Password="Y2lzY2 8xMjM="
+# Profile = "Cisco"
